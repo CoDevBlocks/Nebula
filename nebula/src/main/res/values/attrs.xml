@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <declare-styleable name="Nebula">
+        <attr name="debug" format="boolean" />
+        <attr name="debug_drawBounds" format="boolean" />
+        <attr name="debug_drawMinRadius" format="boolean" />
+        <attr name="debug_drawMaxRadius" format="boolean" />
+        <attr name="debug_drawSlices" format="boolean" />
+        <attr name="debug_drawVertices" format="boolean" />
+        <attr name="debug_drawVertexPath" format="boolean" />
+        <attr name="debug_drawControlPoints" format="boolean" />
+
+        <attr name="minRadius" format="dimension" />
+        <attr name="maxRadius" format="dimension" />
+        <attr name="roundness" format="fraction" />
+
+        <attr name="layersCount" format="integer" />
+
+        <attr name="verticesCount" format="reference|integer|string" />
+        <attr name="fillColors" format="reference|color|string" />
+        <attr name="strokeColors" format="reference|color|string" />
+        <attr name="strokeWidth" format="dimension" />
+
+        <attr name="fillAlpha" format="fraction" />
+        <attr name="strokeAlpha" format="fraction" />
+
+        <attr name="fps" format="integer" />
+        <attr name="frameVertexTranslation" format="dimension" />
+        <attr name="frameLayerRotation" format="float" />
+    </declare-styleable>
+
+</resources>
