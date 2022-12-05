@@ -5,10 +5,6 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
-import androidx.core.content.withStyledAttributes
-import androidx.core.graphics.alpha
-import androidx.core.graphics.withClip
-import androidx.core.graphics.withRotation
 import kotlin.math.*
 import kotlin.properties.ReadWriteProperty
 import kotlin.random.Random
@@ -81,7 +77,7 @@ class Nebula @JvmOverloads constructor(
 
         frameVertexTranslation = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, DEFAULT_FRAME_VERTEX_TRANSLATION_DP.toFloat(), displayMetrics).toInt()
 
-        context.withStyledAttributes(attrs, R.styleable.Nebula) {
+        context.obtainStyledAttributes(attrs, R.styleable.Nebula, 0, 0).apply {
             debug = getBoolean(R.styleable.Nebula_debug, debug)
             debugDrawBounds = getBoolean(R.styleable.Nebula_debug_drawBounds, debugDrawBounds)
             debugDrawMinRadius = getBoolean(R.styleable.Nebula_debug_drawMinRadius, debugDrawMinRadius)
@@ -142,7 +138,7 @@ class Nebula @JvmOverloads constructor(
                                 .split(",")
                                 .map { colorString ->
                                     Integer.parseUnsignedInt(colorString, 16).let { color ->
-                                        if (color.alpha != 0) color else color.or(0xFF000000.toInt())
+                                        if (((color shr 24) and 0xff) != 0) color else color.or(0xFF000000.toInt())
                                     }
                                 }
                                 .toIntArray()
@@ -171,7 +167,7 @@ class Nebula @JvmOverloads constructor(
                                 .split(",")
                                 .map { colorString ->
                                     Integer.parseUnsignedInt(colorString, 16).let { color ->
-                                        if (color.alpha != 0) color else color.or(0xFF000000.toInt())
+                                        if (((color shr 24) and 0xff) != 0) color else color.or(0xFF000000.toInt())
                                     }
                                 }
                                 .toIntArray()
@@ -190,7 +186,7 @@ class Nebula @JvmOverloads constructor(
             fps = getInteger(R.styleable.Nebula_fps, fps)
             frameVertexTranslation = getDimensionPixelSize(R.styleable.Nebula_frameVertexTranslation, frameVertexTranslation)
             frameLayerRotation = getFloat(R.styleable.Nebula_frameLayerRotation, frameLayerRotation)
-        }
+        }.recycle()
 
         initialized = true
     }
@@ -241,32 +237,40 @@ class Nebula @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        canvas.withClip(
-            paddingLeft.toFloat(),
-            paddingTop.toFloat(),
-            (width - paddingRight).toFloat(),
-            (height - paddingBottom).toFloat()
-        ) {
+        with (canvas) {
+            save()
+            clipRect(
+                paddingLeft.toFloat(),
+                paddingTop.toFloat(),
+                (width - paddingRight).toFloat(),
+                (height - paddingBottom).toFloat()
+            )
+
             for (layer in layers) {
-                canvas.withRotation(layer.rotation, drawingBoundsCenter.x, drawingBoundsCenter.y) {
-                    if (layer.fillColor.alpha > 0 || !fillAlpha.isNaN()) {
-                        paint.style = Paint.Style.FILL
-                        paint.color = if (fillAlpha.isNaN()) layer.fillColor else
-                            layer.fillColor.and(0x00FFFFFF).or((255 * fillAlpha).toInt().shl(24))
+                save()
+                rotate(layer.rotation, drawingBoundsCenter.x, drawingBoundsCenter.y)
 
-                        canvas.drawPath(layer.path, paint)
-                    }
+                if (((layer.fillColor shr 24) and 0xff) > 0 || !fillAlpha.isNaN()) {
+                    paint.style = Paint.Style.FILL
+                    paint.color = if (fillAlpha.isNaN()) layer.fillColor else
+                        layer.fillColor.and(0x00FFFFFF).or((255 * fillAlpha).toInt().shl(24))
 
-                    if ((layer.strokeColor.alpha > 0 || !strokeAlpha.isNaN()) && strokeWidth > 0F ) {
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = strokeWidth.toFloat()
-                        paint.color = if (strokeAlpha.isNaN()) layer.strokeColor else
-                            layer.strokeColor.and(0x00FFFFFF).or((255 * strokeAlpha).toInt().shl(24))
-
-                        canvas.drawPath(layer.path, paint)
-                    }
+                    drawPath(layer.path, paint)
                 }
+
+                if ((((layer.strokeColor shr 24) and 0xff) > 0 || !strokeAlpha.isNaN()) && strokeWidth > 0F ) {
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = strokeWidth.toFloat()
+                    paint.color = if (strokeAlpha.isNaN()) layer.strokeColor else
+                        layer.strokeColor.and(0x00FFFFFF).or((255 * strokeAlpha).toInt().shl(24))
+
+                    drawPath(layer.path, paint)
+                }
+
+                restore()
             }
+
+            restore()
         }
 
         if (debug) {
@@ -325,13 +329,16 @@ class Nebula @JvmOverloads constructor(
                 }
             }
 
-            canvas.withRotation(layer.rotation, drawingBoundsCenter.x, drawingBoundsCenter.y) {
+            with (canvas) {
+                save()
+                rotate(layer.rotation, drawingBoundsCenter.x, drawingBoundsCenter.y)
+
                 if (debugDrawVertices) {
                     paint.style = Paint.Style.FILL
                     paint.color = layer.fillColor
                     for (vertex in layer.polygon) {
                         with (vertex) {
-                            canvas.drawCircle(
+                            drawCircle(
                                 point.x,
                                 point.y,
                                 16F,
@@ -349,7 +356,7 @@ class Nebula @JvmOverloads constructor(
                             paint.color = 0xFF00FFFF.toInt()
 
                             with (drawingBoundsCenter) {
-                                canvas.drawLine(
+                                drawLine(
                                     x,
                                     y,
                                     x + (cos(centerAngle) * drawingBounds.width()).toFloat(),
@@ -361,13 +368,15 @@ class Nebula @JvmOverloads constructor(
 
                         if (debugDrawControlPoints) {
                             paint.color = 0xFF00FF00.toInt()
-                            canvas.drawCircle(controlPoint1.x, controlPoint1.y, 8F, paint)
+                            drawCircle(controlPoint1.x, controlPoint1.y, 8F, paint)
 
                             paint.color = 0xFF0000FF.toInt()
-                            canvas.drawCircle(controlPoint2.x, controlPoint2.y, 8F, paint)
+                            drawCircle(controlPoint2.x, controlPoint2.y, 8F, paint)
                         }
                     }
                 }
+
+                restore()
             }
         }
     }
